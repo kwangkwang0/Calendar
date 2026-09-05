@@ -104,8 +104,7 @@
   }
   .item-row.done{text-decoration:line-through;color:var(--ink-soft);}
   .more-tag{font-size:10.5px;color:var(--ink-soft);padding-left:4px;}
-  .dots-row{display:none;gap:3px;flex-wrap:wrap;}
-  .dots-row .dot{width:6px;height:6px;border-radius:50%;}
+  .dots-row{display:none;}
 
   /* ---------- Agenda side panel (desktop) ---------- */
   .panel{
@@ -174,8 +173,7 @@
     .cal-wrap{padding:10px 10px 8px;}
     .legend{padding:8px 10px;}
     .cell{min-height:56px;padding:4px;}
-    .item-row{display:none;}
-    .dots-row{display:flex;margin-top:auto;}
+    .dots-row{display:none;}
     .main{flex-direction:column;}
     .panel{width:100%;flex:none;border-left:none;border-top:1px solid var(--line);padding:14px 14px 90px;}
     .month-title{font-size:19px;min-width:110px;}
@@ -646,12 +644,6 @@
       if(occ.length > 3){
         inner += '<div class="more-tag">+'+(occ.length-3)+'개</div>';
       }
-      var dotsHtml = '<div class="dots-row">'+occ.slice(0,5).map(function(o){
-        var owner = o.ev.ownerId ? personById(o.ev.ownerId) : null;
-        var dotColor = owner ? owner.color : '#C7C0B2';
-        return '<span class="dot" style="background:'+dotColor+'"></span>';
-      }).join('')+'</div>';
-      inner += dotsHtml;
 
       cellsHtml += '<div class="'+cls+'" data-act="select-date" data-date="'+ds+'">'+inner+'</div>';
     }
