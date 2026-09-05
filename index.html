@@ -726,7 +726,7 @@
     var title = ev ? ev.title : '';
     var date = ev ? ev.date : state.modal.date;
     var time = ev ? (ev.time||'') : '';
-    var allDay = ev ? !ev.time : true;
+    var allDay = ev ? !ev.time : false;
     var catId = ev ? ev.categoryId : state.categories[0].id;
     var repeat = ev ? ev.repeat : 'none';
     var repeatEnd = ev ? (ev.repeatEnd||'') : '';
