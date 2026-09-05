@@ -272,7 +272,6 @@
     } else if(EMBEDDED_SYNC && EMBEDDED_SYNC.firebaseConfig && EMBEDDED_SYNC.syncCode){
       connectSync(EMBEDDED_SYNC.firebaseConfig, EMBEDDED_SYNC.syncCode, true);
     }
-    maybeOnboard();
     render();
   }
   function maybeOnboard(){
@@ -397,7 +396,6 @@
           docRef.set({ events: state.events, categories: state.categories, people: state.people, updatedAt: new Date().toISOString() });
         }
         state.applyingRemote = false;
-        maybeOnboard();
         render();
       }, function(err){
         state.sync.error = err.message;
@@ -507,9 +505,6 @@
     var me = state.myPersonId ? personById(state.myPersonId) : null;
     html += '    <button class="btn-ghost" data-act="whoami" title="내 이름/색상 설정">'+(me?('<span class="dot" style="background:'+me.color+';display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;"></span>나: '+escapeHtml(me.name)):'나는 누구?')+'</button>';
     html += '    <button class="btn-ghost" data-act="sync-settings" title="다른 기기와 실시간 동기화">'+(state.sync.enabled?'동기화 설정':'동기화 연결')+'</button>';
-    html += '    <button class="btn-ghost" data-act="export-data" title="일정 데이터를 파일로 저장">내보내기</button>';
-    html += '    <button class="btn-ghost" data-act="import-data" title="백업 파일 불러오기">가져오기</button>';
-    html += '    <input type="file" id="import-file-input" accept="application/json" style="display:none" />';
     html += '    <button class="btn-primary" data-act="new-event">+ 새 일정</button>';
     html += '  </div>';
     html += '</header>';
