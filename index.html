@@ -104,7 +104,7 @@
   }
   .item-row.done{text-decoration:line-through;color:var(--ink-soft);}
   .more-tag{font-size:10.5px;color:var(--ink-soft);padding-left:4px;}
-  .dots-row{display:flex;gap:3px;flex-wrap:wrap;}
+  .dots-row{display:none;gap:3px;flex-wrap:wrap;}
   .dots-row .dot{width:6px;height:6px;border-radius:50%;}
 
   /* ---------- Agenda side panel (desktop) ---------- */
@@ -175,7 +175,7 @@
     .legend{padding:8px 10px;}
     .cell{min-height:56px;padding:4px;}
     .item-row{display:none;}
-    .dots-row{margin-top:auto;}
+    .dots-row{display:flex;margin-top:auto;}
     .main{flex-direction:column;}
     .panel{width:100%;flex:none;border-left:none;border-top:1px solid var(--line);padding:14px 14px 90px;}
     .month-title{font-size:19px;min-width:110px;}
@@ -549,6 +549,10 @@
       app.innerHTML = '<div style="padding:40px;text-align:center;color:#6B7078;font-family:var(--sans)">불러오는 중…</div>';
       return;
     }
+    if(!state.modal){
+      var stale = document.querySelector('.overlay');
+      if(stale) stale.remove();
+    }
     var y = state.currentMonth.getFullYear(), m = state.currentMonth.getMonth();
     var monthLabel = y + '년 ' + (m+1) + '월';
 
@@ -583,7 +587,7 @@
     html += '<div class="legend">';
     state.categories.forEach(function(c){
       var off = state.hiddenCats[c.id] ? ' off' : '';
-      html += '<div class="chip'+off+'" data-act="toggle-cat" data-id="'+c.id+'"><span class="dot" style="background:'+c.color+'"></span>'+escapeHtml(c.name)+'</div>';
+      html += '<div class="chip'+off+'" data-act="toggle-cat" data-id="'+c.id+'">'+escapeHtml(c.name)+'</div>';
     });
     html += '<div class="chip manage" data-act="manage-cats">카테고리 관리</div>';
     html += '</div>';
@@ -634,18 +638,18 @@
       var inner = '<div class="daynum">'+d.getDate()+'</div>';
       var shown = occ.slice(0,3);
       shown.forEach(function(o){
-        var cat = catById(o.ev.categoryId);
         var owner = o.ev.ownerId ? personById(o.ev.ownerId) : null;
         var ownerDot = owner ? '<span class="dot" style="background:'+owner.color+';display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:3px;flex:0 0 auto;"></span>' : '';
-        inner += '<div class="item-row'+(o.done?' done':'')+'" style="border-left-color:'+cat.color+';display:flex;align-items:center;">'+ownerDot+
+        inner += '<div class="item-row'+(o.done?' done':'')+'" style="display:flex;align-items:center;">'+ownerDot+
           '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(o.ev.time? o.ev.time+' ' : '')+escapeHtml(o.ev.title)+'</span></div>';
       });
       if(occ.length > 3){
         inner += '<div class="more-tag">+'+(occ.length-3)+'개</div>';
       }
       var dotsHtml = '<div class="dots-row">'+occ.slice(0,5).map(function(o){
-        var owner = o.ev.ownerId ? personById(o.ev.ownerId) : catById(o.ev.categoryId);
-        return '<span class="dot" style="background:'+owner.color+'"></span>';
+        var owner = o.ev.ownerId ? personById(o.ev.ownerId) : null;
+        var dotColor = owner ? owner.color : '#C7C0B2';
+        return '<span class="dot" style="background:'+dotColor+'"></span>';
       }).join('')+'</div>';
       inner += dotsHtml;
 
@@ -672,14 +676,14 @@
         if(ev.isTodo){
           html += '<input type="checkbox" '+(o.done?'checked':'')+' data-act="toggle-done" data-id="'+ev.id+'" data-date="'+o.date+'" />';
         } else {
-          html += '<span class="dot" style="background:'+cat.color+'"></span>';
+          html += '<span class="dot" style="background:'+(owner?owner.color:'#C7C0B2')+'"></span>';
         }
         html += '<div class="body" data-act="edit-event" data-id="'+ev.id+'">';
         html += '  <div class="t'+(o.done?' done':'')+'">'+escapeHtml(ev.title)+'</div>';
         var metaBits = [];
         if(ev.time) metaBits.push(ev.time);
         if(owner) metaBits.push('<span style="display:inline-flex;align-items:center;gap:3px;"><span class="dot" style="background:'+owner.color+';width:6px;height:6px;display:inline-block;border-radius:50%;"></span>'+escapeHtml(owner.name)+'</span>');
-        metaBits.push(escapeHtml(cat.name));
+        if(cat.id) metaBits.push(escapeHtml(cat.name));
         if(metaBits.length) html += '  <div class="time">'+metaBits.join(' · ')+'</div>';
         if(ev.memo) html += '  <div class="memo">'+escapeHtml(ev.memo)+'</div>';
         html += '</div>';
@@ -743,9 +747,9 @@
     h += '</div>';
     h += '<div class="checkline"><input type="checkbox" id="f-allday" '+(allDay?'checked':'')+' /> <label for="f-allday" style="margin:0">종일</label></div>';
 
-    h += '<div class="field"><label>카테고리 (목적)</label><div class="swatches" id="f-cats">';
+    h += '<div class="field"><label>카테고리 (목적) — 필터링용, 달력에는 표시 안 됨</label><div class="swatches" id="f-cats">';
     state.categories.forEach(function(c){
-      h += '<div class="swatch'+(c.id===catId?' sel':'')+'" data-cat="'+c.id+'" style="background:'+c.color+'" title="'+escapeHtml(c.name)+'"></div>';
+      h += '<div class="chip'+(c.id===catId?'':' off')+'" data-cat="'+c.id+'" style="cursor:pointer;">'+escapeHtml(c.name)+'</div>';
     });
     h += '</div></div>';
 
@@ -781,16 +785,12 @@
 
   function catModalHtml(){
     var h = '<div class="modal" data-stop="1">';
-    h += '<h3>카테고리 관리</h3>';
+    h += '<h3>카테고리(목적) 관리</h3>';
+    h += '<p style="font-size:12px;color:var(--ink-soft);margin-top:-8px;">달력에는 표시되지 않고, 필터링 용도로만 쓰여요.</p>';
     h += '<div id="cat-list">';
     state.categories.forEach(function(c){
       h += '<div class="cat-row" data-id="'+c.id+'">';
-      h += '  <div class="swatches">';
-      SWATCH_COLORS.forEach(function(col){
-        h += '<div class="swatch'+(col===c.color?' sel':'')+'" data-cat-color="'+col+'" style="background:'+col+';width:18px;height:18px;"></div>';
-      });
-      h += '  </div>';
-      h += '  <input type="text" value="'+escapeHtml(c.name)+'" data-cat-name />';
+      h += '  <input type="text" value="'+escapeHtml(c.name)+'" data-cat-name style="flex:1;" />';
       h += '  <button class="del" data-act="delete-cat" data-id="'+c.id+'">&times;</button>';
       h += '</div>';
     });
@@ -950,10 +950,10 @@
         timeInput.disabled = allDayBox.checked;
         if(allDayBox.checked) timeInput.value = '';
       });
-      overlay.querySelectorAll('#f-cats .swatch').forEach(function(sw){
-        sw.addEventListener('click', function(){
-          overlay.querySelectorAll('#f-cats .swatch').forEach(function(s){ s.classList.remove('sel'); });
-          sw.classList.add('sel');
+      overlay.querySelectorAll('#f-cats .chip').forEach(function(ch){
+        ch.addEventListener('click', function(){
+          overlay.querySelectorAll('#f-cats .chip').forEach(function(c){ c.classList.add('off'); });
+          ch.classList.remove('off');
         });
       });
       overlay.querySelectorAll('#f-owners .swatch').forEach(function(sw){
@@ -1109,13 +1109,6 @@
         render();
       });
     } else if(state.modal.type === 'categories'){
-      overlay.querySelectorAll('.swatch[data-cat-color]').forEach(function(sw){
-        sw.addEventListener('click', function(){
-          var row = sw.closest('.cat-row');
-          row.querySelectorAll('.swatch').forEach(function(s){ s.classList.remove('sel'); });
-          sw.classList.add('sel');
-        });
-      });
       overlay.querySelectorAll('[data-act="delete-cat"]').forEach(function(btn){
         btn.addEventListener('click', function(){
           btn.closest('.cat-row').remove();
@@ -1127,17 +1120,8 @@
         var div = document.createElement('div');
         div.className = 'cat-row';
         div.setAttribute('data-id', id);
-        var swHtml = SWATCH_COLORS.map(function(col,i){
-          return '<div class="swatch'+(i===0?' sel':'')+'" data-cat-color="'+col+'" style="background:'+col+';width:18px;height:18px;"></div>';
-        }).join('');
-        div.innerHTML = '<div class="swatches">'+swHtml+'</div><input type="text" placeholder="카테고리 이름" data-cat-name /><button class="del" data-act="delete-cat">&times;</button>';
+        div.innerHTML = '<input type="text" placeholder="카테고리 이름" data-cat-name style="flex:1;" /><button class="del" data-act="delete-cat">&times;</button>';
         list.appendChild(div);
-        div.querySelectorAll('.swatch').forEach(function(sw){
-          sw.addEventListener('click', function(){
-            div.querySelectorAll('.swatch').forEach(function(s){ s.classList.remove('sel'); });
-            sw.classList.add('sel');
-          });
-        });
         div.querySelector('[data-act="delete-cat"]').addEventListener('click', function(){ div.remove(); });
       });
       overlay.querySelector('[data-act="save-cats"]').addEventListener('click', function(){
@@ -1145,10 +1129,8 @@
         var newCats = [];
         rows.forEach(function(row){
           var name = row.querySelector('[data-cat-name]').value.trim();
-          var sel = row.querySelector('.swatch.sel');
-          var color = sel ? sel.getAttribute('data-cat-color') : SWATCH_COLORS[0];
           if(name){
-            newCats.push({ id: row.getAttribute('data-id') || ('cat-'+uid()), name: name, color: color });
+            newCats.push({ id: row.getAttribute('data-id') || ('cat-'+uid()), name: name, color: '#999' });
           }
         });
         if(newCats.length === 0){ alert('카테고리를 최소 1개 이상 남겨주세요.'); return; }
@@ -1166,8 +1148,8 @@
     var date = document.getElementById('f-date').value;
     var allDay = document.getElementById('f-allday').checked;
     var time = allDay ? '' : document.getElementById('f-time').value;
-    var catSel = document.querySelector('#f-cats .swatch.sel');
-    var catId = catSel ? catSel.getAttribute('data-cat') : state.categories[0].id;
+    var catSel = document.querySelector('#f-cats .chip:not(.off)');
+    var catId = catSel ? catSel.getAttribute('data-cat') : (state.categories[0] ? state.categories[0].id : '');
     var ownerSel = document.querySelector('#f-owners .swatch.sel');
     var ownerId = ownerSel ? ownerSel.getAttribute('data-owner') : (state.myPersonId || null);
     var repeat = document.getElementById('f-repeat').value;
